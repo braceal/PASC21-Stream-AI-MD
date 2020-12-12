@@ -142,10 +142,14 @@ def draw_lof_profile(experiment_dir):
     # Pie chart, where the slices will be ordered and plotted counter-clockwise:
     labels = 'CVAE', 'LOF', 'I/O'
     sizes = [sum(fwd_pass_durations), sum(lof_durations), sum(io_durations)]
+    total = sum(sizes)
+    percents = [size / total for size in sizes]
     explode = (0, 0.0, 0.05)  # only "explode" the 2nd slice (i.e. 'Hogs')
 
     fig1, ax1 = plt.subplots()
-    ax1.pie(sizes, explode=explode, labels=labels, autopct='%1.1f%%', shadow=True, startangle=90)
+    patches, texts, *_ = ax1.pie(sizes, explode=explode, shadow=True, startangle=90)
+    labels = [f'{label} - {percent*100:.1f}%' for label, percent in zip(labels, percents)]
+    plt.legend(patches, labels, facecolor=LEGEND_FACECOLOR)
     ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
 
 def get_sim_running_count(exp_dir):
@@ -170,7 +174,7 @@ def get_sim_running_count(exp_dir):
     counts = np.clip(np.cumsum(counts), 0, 160)
     return times, counts
 
-def experiment_timeline(exp_dir):
+def experiment_timeline(exp_dir, y_range=40, top_pad=5):
     train_intervals = get_training_times(exp_dir)
     #print("Training:", train_intervals)
     lof_intervals = get_lof_times(exp_dir)
@@ -185,15 +189,19 @@ def experiment_timeline(exp_dir):
 
     ax.set_xlabel("Experiment time (minutes)")
     ax.set_ylabel("Running MD Count")
-    ax.set_ylim(0, max(md_counts)+10)
+    
+    y_top = max(md_counts) + top_pad
+    y_bottom = y_top - y_range
+    ax.set_ylim(y_bottom, y_top)
     ax.set_xlim(0, exp_end)
     #ax.set_yticks([130,140,150,160])
-
+       
     # These spans are scaled by the width of the canvas:
     for i, (start, end) in enumerate(sorted(train_intervals)):
-        ax.axhspan(90, 98, xmin=start/60/exp_end, xmax=end/60/exp_end, color=C2, ec=BLACK)
+        ax.axhspan(y_bottom+12, y_bottom+18, xmin=start/60/exp_end, xmax=end/60/exp_end, color=C2, ec=BLACK)
     for i, (start, end) in enumerate(sorted(lof_intervals)):
-        ax.axhspan(80, 86, xmin=start/60/exp_end, xmax=end/60/exp_end, color=C3, ec=BLACK)
+        ax.axhspan(y_bottom+2, y_bottom+8, xmin=start/60/exp_end, xmax=end/60/exp_end, color=C3, ec=BLACK)
+    ax.set_ylim(y_bottom, y_top)
     #ax.legend()
     ##ax.legend(bbox_to_anchor=(0.015, 0.99), loc=2, borderaxespad=0., ncol=3, columnspacing=0, labelspacing=-1)
 

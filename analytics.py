@@ -1,10 +1,13 @@
 import numpy as np
 import dateutil
 import itertools
+from tqdm import tqdm
+from pathlib import Path
 from datetime import datetime, timedelta
 import seaborn as sns
 import matplotlib.pyplot as plt
-from pathlib import Path
+import MDAnalysis
+from MDAnalysis.analysis import align, rms, distances
 sns.set(style="white", rc={"axes.facecolor": (0, 0, 0, 0)})
         
 # from matplotlib import rc
@@ -352,3 +355,118 @@ def kde_run_comparison(paths, iteration, labels=None, xlabel="", ylabel=""):
     sns.displot(rmsd_values, kind="kde", palette="icefire", bw_adjust=1, fill=True)
     plt.xlabel(xlabel, fontsize=LABEL_FONTSIZE)
     plt.ylabel(ylabel, fontsize=LABEL_FONTSIZE)
+
+def fraction_of_contacts(cm, ref_cm):
+    """
+    Given two contact matices of equal dimensions, computes
+    the fraction of entries which are equal. This is
+    comonoly refered to as the fraction of contacts and
+    in the case where ref_cm represents the native state
+    this is the fraction of native contacts.
+    Parameters
+    ----------
+    cm : np.ndarray
+        A contact matrix.
+    ref_cm : np.ndarray
+        The reference contact matrix for comparison.
+    """
+    return 1 - (cm != ref_cm).mean()
+
+def compute_contact_fractions(
+    u: MDAnalysis.Universe,
+    u_ref: MDAnalysis.Universe,
+    cutoff: float = 8.0,
+    select: str = "protein and name CA",
+) -> np.ndarray:
+    # Atom selection
+    atoms = u.select_atoms(select)
+    # Get atomic coordinates of reference atoms
+    ref_positions = u_ref.select_atoms(select).positions.copy()
+
+    # Get contact map of reference atoms
+    ref_cm = distances.contact_matrix(
+        ref_positions, cutoff, returntype='sparse'
+    )
+
+    contacts = []
+
+    for _ in u.trajectory:
+        # Point cloud positions of selected atoms in frame i
+        positions = atoms.positions
+        # Compute contact map of current frame
+        cm = distances.contact_matrix(positions, cutoff, returntype='sparse')
+        # Compute fraction of contacts to reference state
+        contacts.append(fraction_of_contacts(cm, ref_cm))
+
+    return np.array(contacts)
+
+def analyze_traj(
+    pdb_file: str,
+    dcd_file: str,
+    u_ref: MDAnalysis.Universe,
+    select: str = "protein and name CA",
+    cutoff: float = 8.0,
+    in_memory: bool = True,
+):
+    u = MDAnalysis.Universe(pdb_file, dcd_file, in_memory=in_memory)
+
+    # Align trajectory to reference structure
+    align.AlignTraj(
+        u, u_ref, select=select, in_memory=in_memory,
+    ).run()
+
+    # Compute RMSD to reference
+    rmsds = rms.RMSD(
+        u, u_ref, select=select, in_memory=in_memory,
+    ).run().rmsd
+
+    # Compute fraction of contacts to reference
+    contacts = compute_contact_fractions(
+        u, u_ref, cutoff, select,
+    )
+
+    data = [{
+        "rmsd": rmsd[2],
+        "contact": contact,
+        "pdb_file": pdb_file,
+        "dcd_file": dcd_file,
+    } for rmsd, contact in zip(rmsds, contacts)]
+
+    return data
+
+def analyze_md_runs(
+    experiment_dir: Path,
+    reference_path: Path,
+    select: str = "protein and name CA",
+    cutoff: float = 8.0,
+    in_memory: bool = True,
+):
+    # Collect all md run directories
+    md_run_dirs = filter(
+        lambda p: p.is_dir(),
+        experiment_dir.joinpath("md_runs").iterdir()
+    )
+
+    u_ref = MDAnalysis.Universe(
+        reference_path.as_posix(), in_memory=in_memory
+    )
+
+    all_data = []
+
+    for md_run_dir in tqdm(md_run_dirs):
+
+        pdb_file = next(md_run_dir.glob("*.pdb")).as_posix()
+        dcd_file = next(md_run_dir.glob("*.dcd")).as_posix()
+
+        data = analyze_traj(
+            pdb_file,
+            dcd_file,
+            u_ref,
+            select=select,
+            cutoff=cutoff,
+            in_memory=in_memory,
+        )
+
+        all_data.extend(data)
+
+    return all_data

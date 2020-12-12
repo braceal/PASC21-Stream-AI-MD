@@ -24,7 +24,8 @@ BLACK='k'
 C1, C2, C3, C4, C5, C6 = sns.color_palette()[:6]
 
 def save_fig(name):
-    filename = f"figures/{name}.pdf"
+    here = Path(__file__).resolve().parent
+    filename = here.joinpath(f"figures/{name}.pdf")
     plt.savefig(filename, bbox_inches="tight")
 
 def parse_datetime(line):
@@ -355,6 +356,6 @@ def kde_run_comparison(paths, iteration, labels=None, xlabel="", ylabel=""):
     sns.displot(rmsd_values, kind="kde", palette="icefire", bw_adjust=1, fill=True)
     plt.xlabel(xlabel, fontsize=LABEL_FONTSIZE)
     plt.ylabel(ylabel, fontsize=LABEL_FONTSIZE)
-    plt.ysca
+    plt.yscale("log")
     #plt.savefig("./rmsd-histograms.png", dpi=600)
     plt.show()

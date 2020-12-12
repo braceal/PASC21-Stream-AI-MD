@@ -26,7 +26,7 @@ C1, C2, C3, C4, C5, C6 = sns.color_palette()[:6]
 def save_fig(name):
     here = Path(__file__).resolve().parent
     filename = here.joinpath(f"figures/{name}.pdf")
-    plt.savefig(filename, bbox_inches="tight")
+    plt.savefig(filename, bbox_inches="tight", dpi=600)
 
 def parse_datetime(line):
     if '|' in line:
@@ -304,8 +304,6 @@ def plot_conformational_sampling(paths, iterations=[0], xlabel="", ylabel=""):
     plt.ylabel(ylabel, fontsize=LABEL_FONTSIZE)
     plt.xticks(fontsize=TICK_FONTSIZE)
     plt.yticks(fontsize=TICK_FONTSIZE)
-    #plt.savefig("./rmsd-histograms.png", dpi=600)
-    plt.show()
 
 def kde_conformational_sampling(paths, iterations=[0], labels=None, xlabel="", ylabel=""):
 
@@ -332,8 +330,6 @@ def kde_conformational_sampling(paths, iterations=[0], labels=None, xlabel="", y
     sns.displot(data, kind="kde", palette="icefire", bw_adjust=0.1, fill=True)
     plt.xlabel(xlabel, fontsize=LABEL_FONTSIZE)
     plt.ylabel(ylabel, fontsize=LABEL_FONTSIZE)
-    #plt.savefig("./rmsd-histograms.png", dpi=600)
-    plt.show()
 
 def kde_run_comparison(paths, iteration, labels=None, xlabel="", ylabel=""):
     # Collect all RMSD from each experiment
@@ -356,6 +352,3 @@ def kde_run_comparison(paths, iteration, labels=None, xlabel="", ylabel=""):
     sns.displot(rmsd_values, kind="kde", palette="icefire", bw_adjust=1, fill=True)
     plt.xlabel(xlabel, fontsize=LABEL_FONTSIZE)
     plt.ylabel(ylabel, fontsize=LABEL_FONTSIZE)
-    plt.yscale("log")
-    #plt.savefig("./rmsd-histograms.png", dpi=600)
-    plt.show()

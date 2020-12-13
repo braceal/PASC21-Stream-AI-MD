@@ -519,3 +519,9 @@ def analyze_md_runs(
             all_data.append(data)
 
     return all_data
+
+def write_pdb(output_pdb, input_pdb, traj_file, frame):
+    mda_traj = MDAnalysis.Universe(input_pdb, traj_file)
+    mda_traj.trajectory[frame]
+    PDB = MDAnalysis.Writer(output_pdb)
+    PDB.write(mda_traj.atoms)

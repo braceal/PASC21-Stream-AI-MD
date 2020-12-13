@@ -285,7 +285,8 @@ def plot_losses(exp_dirs, labels=None, colors=None, scale=1.0, as_time=False, lo
     ax = plt.subplot()
 
     exps = [parse_loss(d) for d in exp_dirs]
-    colors = [C1,C2,C3,C4,C5,C6]
+    if colors is None:
+        colors = [C1,C2,C3,C4,C5,C6]
     if log_scale:
         plt.yscale("log")
     if labels is None:
@@ -295,8 +296,8 @@ def plot_losses(exp_dirs, labels=None, colors=None, scale=1.0, as_time=False, lo
         x_value = [t/60.0 for t in times] if as_time else steps
         losses = np.array(losses) * scale
         ax.plot(x_value, losses, label=label, c=color)
-    ax.set_xlabel("Training time / min" if as_time else "Training steps")
-    ax.set_ylabel("Training Loss")
+    ax.set_xlabel("Cumulative Training Time / min" if as_time else "Training steps")
+    ax.set_ylabel("Normalized Training Loss")
     ax.legend(facecolor="white")
 
 def plot_conformational_sampling(paths, iterations=[0], xlabel="", ylabel=""):

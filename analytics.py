@@ -21,6 +21,7 @@ sns.set(
         "xtick.labelsize": 15,
         "ytick.labelsize": 15,
         "axes.labelsize": 16,
+        "axes.titlesize": 16,
         "axes.labelpad": 6,
     }
 )
@@ -151,7 +152,7 @@ def get_lof_times(experiment_dir):
     outlier_detection_intervals = list(zip(fwd_pass_times[0], io_times[1]))
     return outlier_detection_intervals
 
-def draw_lof_profile(experiment_dir):
+def draw_lof_profile(experiment_dir, ax=None, legend_loc=2, legend_pos=None, title=None):
     fwd_pass_times, lof_times, io_times = _get_lof_internal_timings(experiment_dir)
     fwd_pass_durations = [fwd_pass_times[1][i] - fwd_pass_times[0][i] for i in range(len(fwd_pass_times[1]))][1:]
     lof_durations = [lof_times[1][i] - lof_times[0][i] for i in range(len(lof_times[1]))][1:]
@@ -160,15 +161,19 @@ def draw_lof_profile(experiment_dir):
     # Pie chart, where the slices will be ordered and plotted counter-clockwise:
     labels = 'CVAE', 'LOF', 'I/O'
     sizes = [sum(fwd_pass_durations), sum(lof_durations), sum(io_durations)]
+    print(f"Total time in {labels} is {sizes}")
     total = sum(sizes)
     percents = [size / total for size in sizes]
     explode = (0, 0.0, 0.05)  # only "explode" the 2nd slice (i.e. 'Hogs')
 
-    fig1, ax1 = plt.subplots()
-    patches, texts, *_ = ax1.pie(sizes, explode=explode, shadow=True, startangle=90)
+    if ax is None:
+        fig1, ax = plt.subplots()
+    if title is not None:
+        ax.set_title(title)
+    patches, texts, *_ = ax.pie(sizes, explode=explode, shadow=True, startangle=90)
     labels = [f'{label} - {percent*100:.1f}%' for label, percent in zip(labels, percents)]
-    plt.legend(patches, labels, facecolor=LEGEND_FACECOLOR)
-    ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+    ax.legend(patches, labels, facecolor=LEGEND_FACECOLOR, loc=legend_loc, bbox_to_anchor=legend_pos)
+    ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
 
 def get_sim_running_count(exp_dir):
     sim_starts, sim_ends = [], []

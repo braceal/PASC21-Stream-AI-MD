@@ -522,6 +522,83 @@ def analyze_md_runs(
 
     return all_data
 
+def dist_pbc(a, b, box):
+    """
+    calculate distance between two points in PBC box
+    """
+    assert len(a) == len(b)
+    box = box[:len(a)]
+    a = a % box
+    b = b % box
+    dist_vec = np.abs(a - b)
+    dist_vec = np.abs(dist_vec - box * (dist_vec > box/2))
+    return np.linalg.norm(dist_vec)
+
+def _compute_com(
+    pdb_file: str,
+    dcd_file: str,
+    select: str = "protein and name CA",
+    in_memory: bool = True,
+    sub_sample: int = 1,
+):
+
+    u = mda.Universe(
+        pdb_file, dcd_file, in_memory=in_memory
+    )
+
+    protein_ca = u.select_atoms(select)
+    nsp16 = u.segments[0].atoms
+    nsp10 = u.segments[1].atoms
+
+    dists = []
+    for _ in u.trajectory[::sub_sample]: 
+        dists.append(
+            dist_pbc(
+                nsp10.center_of_mass(), 
+                nsp16.center_of_mass(), 
+                nsp16.dimensions,
+            )
+        )
+
+    sub_sampled_frames = np.arange(0, len(u), sub_sample)
+    data = [{
+        "dist": dist,
+        "frame": frame,
+        "pdb_file": pdb_file,
+        "dcd_file": dcd_file,
+    } for dist, frame in zip(dists, sub_sampled_frames)]
+    
+    return data
+
+def _com_worker(kwargs):
+    return _compute_com(**kwargs)
+
+def compute_center_of_mass_dist(
+    experiment_dir: Path,
+    select: str = "protein and name CA",
+    in_memory: bool = True,
+    sub_sample: int = 1,
+    num_workers: int = 10,
+):
+    # Collect all md run directories
+    md_run_dirs = serialize_md_runs(experiment_dir)
+    
+    all_data = []
+    
+    kwargs = [{
+        "pdb_file": next(md_run_dir.glob("*.pdb")).as_posix(),
+        "dcd_file": next(md_run_dir.glob("*.dcd")).as_posix(),
+        "select": select,
+        "sub_sample": sub_sample,
+        "in_memory": in_memory,
+    } for md_run_dir in md_run_dirs]
+
+    with ProcessPoolExecutor(max_workers=num_workers) as executor:
+        for data in tqdm(executor.map(_com_worker, kwargs)):
+            all_data.append(data)
+    
+    return all_data
+
 def write_pdb(output_pdb, input_pdb, traj_file, frame):
     mda_traj = MDAnalysis.Universe(input_pdb, traj_file)
     mda_traj.trajectory[frame]

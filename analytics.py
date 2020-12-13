@@ -361,12 +361,12 @@ def kde_conformational_sampling(paths, iterations=[0], labels=None, xlabel="", y
     if labels is None:
         labels = [f"iter-{ind}" for ind in iterations]
     data = {label: rmsd_values[ind] for (label, ind) in zip(labels, iterations)}
-    ax = sns.displot(data, kind="kde", palette="icefire", legend=False, aspect=aspect, bw_adjust=0.1, gridsize=1000, clip=(2,10), fill=True)
+    ax = sns.displot(data, kind="kde", palette="icefire", legend=False, aspect=aspect, bw_adjust=0.1, gridsize=1000, clip=(2,10), fill=True, common_norm=False)
     plt.xlabel(xlabel, fontsize=LABEL_FONTSIZE)
     plt.ylabel(ylabel, fontsize=LABEL_FONTSIZE)
     return ax
 
-def kde_run_comparison(paths, iteration, labels=None, xlabel="", ylabel="", legend_pos=(0.7, 0.8)):
+def kde_run_comparison(paths, iteration, labels=None, xlabel="", ylabel="", legend_pos=(0.7, 0.8), aspect=1.6):
     # Collect all RMSD from each experiment
     rmsd_file = {}
     rmsd_values = {}
@@ -385,7 +385,8 @@ def kde_run_comparison(paths, iteration, labels=None, xlabel="", ylabel="", lege
         rmsd_values[label] = np.load(rmsd_file[path].as_posix())
         print(label, "is from", rmsd_file[path], "mean", np.mean(rmsd_values[label]))
         
-    g = sns.displot(rmsd_values, kind="kde", palette="icefire", bw_adjust=1, fill=True, legend=False)
+    g = sns.displot(rmsd_values, kind="kde", palette="icefire", fill=True, legend=False, common_norm=False, aspect=aspect, bw_adjust=0.1, gridsize=1000)
+    g.ax.set_xlim(3, 9)
     label_dict = dict(zip(labels, reversed(g.ax.collections)))
     g.add_legend(label_dict, loc='right', bbox_to_anchor=legend_pos)
     plt.xlabel(xlabel, fontsize=LABEL_FONTSIZE)

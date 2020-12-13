@@ -285,7 +285,8 @@ def plot_losses(exp_dirs, labels=None, colors=None, scale=1.0, as_time=False, lo
     ax = plt.subplot()
 
     exps = [parse_loss(d) for d in exp_dirs]
-    colors = [C1,C2,C3,C4,C5,C6]
+    if colors is None:
+        colors = [C1,C2,C3,C4,C5,C6]
     if log_scale:
         plt.yscale("log")
     if labels is None:
@@ -295,8 +296,8 @@ def plot_losses(exp_dirs, labels=None, colors=None, scale=1.0, as_time=False, lo
         x_value = [t/60.0 for t in times] if as_time else steps
         losses = np.array(losses) * scale
         ax.plot(x_value, losses, label=label, c=color)
-    ax.set_xlabel("Training time / min" if as_time else "Training steps")
-    ax.set_ylabel("Training Loss")
+    ax.set_xlabel("Cumulative Training Time / min" if as_time else "Training steps")
+    ax.set_ylabel("Normalized Training Loss")
     ax.legend(facecolor="white")
 
 def plot_conformational_sampling(paths, iterations=[0], xlabel="", ylabel=""):
@@ -355,18 +356,17 @@ def kde_conformational_sampling(paths, iterations=[0], labels=None, xlabel="", y
     if labels is None:
         labels = [f"iter-{ind}" for ind in iterations]
     data = {label: rmsd_values[ind] for (label, ind) in zip(labels, iterations)}
-    ax = sns.displot(data, kind="kde", palette="icefire", legend=False, aspect=aspect, bw_adjust=0.1, fill=True)
+    ax = sns.displot(data, kind="kde", palette="icefire", legend=False, aspect=aspect, bw_adjust=0.1, gridsize=1000, clip=(2,10), fill=True)
     plt.xlabel(xlabel, fontsize=LABEL_FONTSIZE)
     plt.ylabel(ylabel, fontsize=LABEL_FONTSIZE)
+    return ax
 
 def kde_run_comparison(paths, iteration, labels=None, xlabel="", ylabel="", legend_pos=(0.7, 0.8)):
     # Collect all RMSD from each experiment
     rmsd_file = {}
     rmsd_values = {}
     for path in paths:
-        print(path)
         rmsd_files = list(path.joinpath("outlier_runs").glob("rmsds-*"))
-        print(len(rmsd_files))
         rmsd_file[path] = sorted(
             rmsd_files,
             key=lambda p: int(p.with_suffix("").name.split("-")[1])
@@ -378,9 +378,10 @@ def kde_run_comparison(paths, iteration, labels=None, xlabel="", ylabel="", lege
         labels = [p.name for p in paths]
     for path, label in zip(paths, labels):
         rmsd_values[label] = np.load(rmsd_file[path].as_posix())
+        print(label, "is from", rmsd_file[path], "mean", np.mean(rmsd_values[label]))
         
     g = sns.displot(rmsd_values, kind="kde", palette="icefire", bw_adjust=1, fill=True, legend=False)
-    label_dict = dict(zip(labels, g.ax.collections))
+    label_dict = dict(zip(labels, reversed(g.ax.collections)))
     g.add_legend(label_dict, loc='right', bbox_to_anchor=legend_pos)
     plt.xlabel(xlabel, fontsize=LABEL_FONTSIZE)
     plt.ylabel(ylabel, fontsize=LABEL_FONTSIZE)

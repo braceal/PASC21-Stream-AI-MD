@@ -359,14 +359,16 @@ def kde_conformational_sampling(paths, iterations=[0], labels=None, xlabel="", y
     plt.xlabel(xlabel, fontsize=LABEL_FONTSIZE)
     plt.ylabel(ylabel, fontsize=LABEL_FONTSIZE)
 
-def kde_run_comparison(paths, iteration, labels=None, xlabel="", ylabel=""):
+def kde_run_comparison(paths, iteration, labels=None, xlabel="", ylabel="", legend_pos=(0.7, 0.8)):
     # Collect all RMSD from each experiment
     rmsd_file = {}
     rmsd_values = {}
     for path in paths:
         print(path)
+        rmsd_files = list(path.joinpath("outlier_runs").glob("rmsds-*"))
+        print(len(rmsd_files))
         rmsd_file[path] = sorted(
-            list(path.joinpath("outlier_runs").glob("rmsds-*")),
+            rmsd_files,
             key=lambda p: int(p.with_suffix("").name.split("-")[1])
         )[iteration]
 
@@ -377,7 +379,9 @@ def kde_run_comparison(paths, iteration, labels=None, xlabel="", ylabel=""):
     for path, label in zip(paths, labels):
         rmsd_values[label] = np.load(rmsd_file[path].as_posix())
         
-    sns.displot(rmsd_values, kind="kde", palette="icefire", bw_adjust=1, fill=True)
+    g = sns.displot(rmsd_values, kind="kde", palette="icefire", bw_adjust=1, fill=True, legend=False)
+    label_dict = dict(zip(labels, g.ax.collections))
+    g.add_legend(label_dict, loc='right', bbox_to_anchor=legend_pos)
     plt.xlabel(xlabel, fontsize=LABEL_FONTSIZE)
     plt.ylabel(ylabel, fontsize=LABEL_FONTSIZE)
 

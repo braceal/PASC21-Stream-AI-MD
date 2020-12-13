@@ -160,6 +160,7 @@ def draw_lof_profile(experiment_dir):
     # Pie chart, where the slices will be ordered and plotted counter-clockwise:
     labels = 'CVAE', 'LOF', 'I/O'
     sizes = [sum(fwd_pass_durations), sum(lof_durations), sum(io_durations)]
+    print(f"Total time in {labels} is {sizes}")
     total = sum(sizes)
     percents = [size / total for size in sizes]
     explode = (0, 0.0, 0.05)  # only "explode" the 2nd slice (i.e. 'Hogs')

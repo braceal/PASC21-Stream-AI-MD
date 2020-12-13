@@ -12,8 +12,8 @@ import MDAnalysis
 from MDAnalysis.analysis import align, rms, distances
 sns.set(
     style="white",
-    context="paper",
-    font_scale=1.2,
+    #context="paper",
+    #font_scale=1.2,
     rc={
         "axes.facecolor": (0, 0, 0, 0), 
         "legend.facecolor": "white", 
@@ -236,7 +236,7 @@ def parse_loss(exp_dir):
         fname = p.joinpath("cs1_run.log")
         return _parse_cs1_loss(fname)
     else:
-        raise ValueError("No train log")
+        raise ValueError(f"No train log in {p}")
         
 def _parse_gpu_loss(fname):
     steps, losses, times = [], [], []
@@ -280,18 +280,20 @@ def _parse_cs1_loss(fname):
     times = list(np.cumsum(times))
     return steps, losses, times
 
-def plot_losses(exp_dirs, labels=None, as_time=False):
+def plot_losses(exp_dirs, labels=None, colors=None, scale=1.0, as_time=False, log_scale=True):
     fig = plt.figure(figsize=FIGSIZE1)
     ax = plt.subplot()
 
     exps = [parse_loss(d) for d in exp_dirs]
     colors = [C1,C2,C3,C4,C5,C6]
-    plt.yscale("log")
+    if log_scale:
+        plt.yscale("log")
     if labels is None:
         labels = [d.name for d in exp_dirs]
 
     for label, (steps, losses, times), color in zip (labels, exps, colors):
         x_value = [t/60.0 for t in times] if as_time else steps
+        losses = np.array(losses) * scale
         ax.plot(x_value, losses, label=label, c=color)
     ax.set_xlabel("Training time / min" if as_time else "Training steps")
     ax.set_ylabel("Training Loss")
@@ -332,7 +334,7 @@ def plot_conformational_sampling(paths, iterations=[0], xlabel="", ylabel=""):
     plt.xticks(fontsize=TICK_FONTSIZE)
     plt.yticks(fontsize=TICK_FONTSIZE)
 
-def kde_conformational_sampling(paths, iterations=[0], labels=None, xlabel="", ylabel=""):
+def kde_conformational_sampling(paths, iterations=[0], labels=None, xlabel="", ylabel="", aspect=2.0):
 
     # Collect all RMSD from each experiment
     rmsd_files = []
@@ -353,8 +355,7 @@ def kde_conformational_sampling(paths, iterations=[0], labels=None, xlabel="", y
     if labels is None:
         labels = [f"iter-{ind}" for ind in iterations]
     data = {label: rmsd_values[ind] for (label, ind) in zip(labels, iterations)}
-        
-    sns.displot(data, kind="kde", palette="icefire", bw_adjust=0.1, fill=True)
+    ax = sns.displot(data, kind="kde", palette="icefire", legend=False, aspect=aspect, bw_adjust=0.1, fill=True)
     plt.xlabel(xlabel, fontsize=LABEL_FONTSIZE)
     plt.ylabel(ylabel, fontsize=LABEL_FONTSIZE)
 

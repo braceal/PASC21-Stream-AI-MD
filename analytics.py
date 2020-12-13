@@ -8,7 +8,20 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import MDAnalysis
 from MDAnalysis.analysis import align, rms, distances
-sns.set(style="white", rc={"axes.facecolor": (0, 0, 0, 0)})
+sns.set(
+    style="white",
+    context="paper",
+    font_scale=1.2,
+    rc={
+        "axes.facecolor": (0, 0, 0, 0), 
+        "legend.facecolor": "white", 
+        "legend.fontsize": 14,
+        "xtick.labelsize": 15,
+        "ytick.labelsize": 15,
+        "axes.labelsize": 16,
+        "axes.labelpad": 6,
+    }
+)
         
 # from matplotlib import rc
 # rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
@@ -202,11 +215,12 @@ def experiment_timeline(exp_dir, y_range=40, top_pad=5):
     # These spans are scaled by the width of the canvas:
     for i, (start, end) in enumerate(sorted(train_intervals)):
         ax.axhspan(y_bottom+12, y_bottom+18, xmin=start/60/exp_end, xmax=end/60/exp_end, color=C2, ec=BLACK)
+    ax.plot(1, y_top+10, lw=4, color=C2, label="Train")
     for i, (start, end) in enumerate(sorted(lof_intervals)):
         ax.axhspan(y_bottom+2, y_bottom+8, xmin=start/60/exp_end, xmax=end/60/exp_end, color=C3, ec=BLACK)
+    ax.plot(1, y_top+10, lw=4, color=C3, label="LOF")
     ax.set_ylim(y_bottom, y_top)
-    #ax.legend()
-    ##ax.legend(bbox_to_anchor=(0.015, 0.99), loc=2, borderaxespad=0., ncol=3, columnspacing=0, labelspacing=-1)
+    ax.legend(bbox_to_anchor=(0.015, 0.99), loc=2, borderaxespad=0., ncol=3, columnspacing=1, labelspacing=-1)
 
 def parse_loss(exp_dir):
     p = Path(exp_dir)

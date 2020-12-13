@@ -3,11 +3,14 @@ import dateutil
 import itertools
 from tqdm import tqdm
 from pathlib import Path
+from collections import defaultdict
+from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime, timedelta
 import seaborn as sns
 import matplotlib.pyplot as plt
 import MDAnalysis
 from MDAnalysis.analysis import align, rms, distances
+
 sns.set(style="white", rc={"axes.facecolor": (0, 0, 0, 0)})
         
 # from matplotlib import rc
@@ -411,12 +414,16 @@ def compute_contact_fractions(
 def analyze_traj(
     pdb_file: str,
     dcd_file: str,
-    u_ref: MDAnalysis.Universe,
+    reference_path: str,
     select: str = "protein and name CA",
     cutoff: float = 8.0,
     in_memory: bool = True,
 ):
+    
     u = MDAnalysis.Universe(pdb_file, dcd_file, in_memory=in_memory)
+    u_ref = MDAnalysis.Universe(
+        reference_path, in_memory=in_memory
+    )
 
     # Align trajectory to reference structure
     align.AlignTraj(
@@ -434,13 +441,39 @@ def analyze_traj(
     )
 
     data = [{
-        "rmsd": rmsd[2],
-        "contact": contact,
+        "rmsd": float(rmsd[2]),
+        "contact": float(contact),
+        "frame": int(rmsd[0]),
         "pdb_file": pdb_file,
         "dcd_file": dcd_file,
     } for rmsd, contact in zip(rmsds, contacts)]
 
     return data
+
+def serialize_md_runs(experiment_dir: Path):
+    
+    # Get MD run dirs sorted Stream-AI-MD iteration
+    md_run_dirs = sorted(
+        filter(
+            lambda p: p.is_dir() and "input" not in p.name,
+            experiment_dir.joinpath("md_runs").iterdir(),
+        ),
+        key=lambda p: int(p.name.split("_")[1])
+    )
+
+    return md_run_dirs
+
+def stream_ai_md_iterations(experiment_dir: Path):
+    md_run_dirs = serialize_md_runs(experiment_dir)
+    iterations = defaultdict(list)
+    for md_run_dir in md_run_dirs:
+        run_iter = md_run_dir.name.split("_")[1]
+        iterations[run_iter].append(md_run_dir)
+    # Get list of md_run_dirs for each iteration of Stream-AI-MD
+    return [val for val in iterations.values()]
+
+def _worker(kwargs):
+    return analyze_traj(**kwargs)
 
 def analyze_md_runs(
     experiment_dir: Path,
@@ -448,33 +481,24 @@ def analyze_md_runs(
     select: str = "protein and name CA",
     cutoff: float = 8.0,
     in_memory: bool = True,
+    num_workers: int = 10,
 ):
     # Collect all md run directories
-    md_run_dirs = filter(
-        lambda p: p.is_dir(),
-        experiment_dir.joinpath("md_runs").iterdir()
-    )
-
-    u_ref = MDAnalysis.Universe(
-        reference_path.as_posix(), in_memory=in_memory
-    )
-
+    md_run_dirs = serialize_md_runs(experiment_dir)
+        
     all_data = []
+    
+    kwargs = [{
+        "pdb_file": next(md_run_dir.glob("*.pdb")).as_posix(),
+        "dcd_file": next(md_run_dir.glob("*.dcd")).as_posix(),
+        "reference_path": reference_path.as_posix(),
+        "select": select,
+        "cutoff": cutoff,
+        "in_memory": in_memory,
+    } for md_run_dir in md_run_dirs]
 
-    for md_run_dir in tqdm(md_run_dirs):
-
-        pdb_file = next(md_run_dir.glob("*.pdb")).as_posix()
-        dcd_file = next(md_run_dir.glob("*.dcd")).as_posix()
-
-        data = analyze_traj(
-            pdb_file,
-            dcd_file,
-            u_ref,
-            select=select,
-            cutoff=cutoff,
-            in_memory=in_memory,
-        )
-
-        all_data.extend(data)
+    with ProcessPoolExecutor(max_workers=num_workers) as executor:
+        for data in tqdm(executor.map(_worker, kwargs)):
+            all_data.append(data)
 
     return all_data

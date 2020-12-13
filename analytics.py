@@ -356,9 +356,10 @@ def kde_conformational_sampling(paths, iterations=[0], labels=None, xlabel="", y
     if labels is None:
         labels = [f"iter-{ind}" for ind in iterations]
     data = {label: rmsd_values[ind] for (label, ind) in zip(labels, iterations)}
-    ax = sns.displot(data, kind="kde", palette="icefire", legend=False, aspect=aspect, bw_adjust=0.1, fill=True)
+    ax = sns.displot(data, kind="kde", palette="icefire", legend=False, aspect=aspect, bw_adjust=0.1, gridsize=1000, clip=(2,10), fill=True)
     plt.xlabel(xlabel, fontsize=LABEL_FONTSIZE)
     plt.ylabel(ylabel, fontsize=LABEL_FONTSIZE)
+    return ax
 
 def kde_run_comparison(paths, iteration, labels=None, xlabel="", ylabel="", legend_pos=(0.7, 0.8)):
     # Collect all RMSD from each experiment

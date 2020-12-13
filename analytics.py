@@ -364,9 +364,7 @@ def kde_run_comparison(paths, iteration, labels=None, xlabel="", ylabel="", lege
     rmsd_file = {}
     rmsd_values = {}
     for path in paths:
-        print(path)
         rmsd_files = list(path.joinpath("outlier_runs").glob("rmsds-*"))
-        print(len(rmsd_files))
         rmsd_file[path] = sorted(
             rmsd_files,
             key=lambda p: int(p.with_suffix("").name.split("-")[1])
@@ -378,9 +376,10 @@ def kde_run_comparison(paths, iteration, labels=None, xlabel="", ylabel="", lege
         labels = [p.name for p in paths]
     for path, label in zip(paths, labels):
         rmsd_values[label] = np.load(rmsd_file[path].as_posix())
+        print(label, "is from", rmsd_file[path], "mean", np.mean(rmsd_values[label]))
         
     g = sns.displot(rmsd_values, kind="kde", palette="icefire", bw_adjust=1, fill=True, legend=False)
-    label_dict = dict(zip(labels, g.ax.collections))
+    label_dict = dict(zip(labels, reversed(g.ax.collections)))
     g.add_legend(label_dict, loc='right', bbox_to_anchor=legend_pos)
     plt.xlabel(xlabel, fontsize=LABEL_FONTSIZE)
     plt.ylabel(ylabel, fontsize=LABEL_FONTSIZE)
